@@ -1,0 +1,473 @@
+﻿<!DOCTYPE html>
+<!-- CSP support mode (required for Windows Universal apps): https://docs.angularjs.org/api/ng/directive/ngCsp -->
+<html lang="en" ng-app="app" ng-csp>
+<head>
+    <meta charset="utf-8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- JS dependencies (order matters!) -->
+    <script type="text/javascript" src="scripts/storejson.min.js"></script>
+    <script>
+        var store_js = store;
+    </script>
+    <script src="scripts/platformOverrides.js"></script>
+    <script src="lib/angular/angular.min.js"></script>
+    <script src="lib/angular/angular-sanitize.min.js"></script>
+    <script src="lib/onsen/js/onsenui.min.js"></script>
+
+    <script src="scripts/jquery-1.9.1.min.js"></script>
+    
+    <script type="text/javascript" src="scripts/firebase.min.js"></script>
+    <script type="text/javascript" src="scripts/gloader.js"></script>
+    
+    <script>
+        
+    try {
+        google.load("feeds", "1");
+    }
+    catch (e) {
+        // statements to handle any exceptions
+        console.log(e); // pass exception object to error handler
+        $('#cons').text(e);
+    }
+    try {
+        var firebase = new Firebase('https://brilliant-fire-7375.firebaseio.com');
+        var fb_rss_url_list = firebase.child('rss_url_list');
+        var fb_rss_top = fb_rss_url_list.child('top');
+        var fb_rss_category = fb_rss_url_list.child('category');
+        var fb_rss_allfeed = fb_rss_url_list.child('allfeed');
+        var fb_shouldiupdate = fb_rss_url_list.child('shouldiupdate');
+    }
+    catch (e) {
+        console.log(e);
+    }
+
+    if (store_js.enabled) {
+        var localStoreData = store_js.get('localStoreData');
+    }
+        
+    </script>
+   
+
+    <!-- CSS dependencies -->
+    <link rel="stylesheet" href="lib/onsen/css/onsenui.css" />
+    <link rel="stylesheet" href="lib/onsen/css/onsen-css-components-blue-basic-theme.css" />
+    <link rel="stylesheet" href="style.css"/>
+
+    <!-- CSP support mode (required for Windows Universal apps) -->
+    <link rel="stylesheet" href="lib/angular/angular-csp.css" />
+
+    <!-- Cordova reference -->
+    <script src="cordova.js"></script>
+    <script src="scripts/app.js"></script>
+    <!-- -->
+
+    <!-- --------------- App init --------------- -->
+
+    <title>Onsen UI Sliding Menu</title>
+
+   
+
+</head>
+
+<body ng-controller="feed-controller">
+
+    <ons-sliding-menu menu-page="menu.html" main-page="welcome.html" side="left"
+                      var="menu" type="reveal" max-slide-distance="45%" swipeable="true">
+    </ons-sliding-menu>
+
+    
+
+    <ons-template id="menu.html">
+        <ons-page modifier="menu-page">
+            
+            <ons-list class="menu-list">
+                <!--<ons-list-item class="menu-item" ng-click="menu.setMainPage('all-feed.html', {closeMenu: true})">
+                    <ons-icon icon="fa-home"></ons-icon>
+                    Home
+                </ons-list-item>-->
+
+                <ons-list-item class="menu-item " ng-click="searchFilterBy('')">
+                    <ons-icon icon="fa-search"></ons-icon>
+                    Search
+                </ons-list-item>
+
+                <ons-list-item class="menu-item " ng-click="searchFilterBy('favorite')">
+                    <ons-icon icon="fa-heart"></ons-icon>
+                    Favorite
+                </ons-list-item>
+
+                <!--<ons-list-item class="menu-item" ng-click="menu.setMainPage('settings.html', {closeMenu: true})">
+                    <ons-icon icon="fa-star"></ons-icon>
+                    Settings
+                </ons-list-item>-->
+
+                <!--<ons-list-item class="menu-item" ng-click="menu.setMainPage('welcome.html', {closeMenu: true})">
+                    <ons-icon icon="fa-share"></ons-icon>
+                    Welcome
+                </ons-list-item>-->
+            </ons-list>
+
+            <br>
+
+            <ons-list class="menu-list" ng-repeat="cat in exploreMenuCategories">
+                <ons-list-item class="menu-item " ng-click="searchFilterBy(cat)">
+                    <ons-icon icon="fa-angle-right"></ons-icon>
+                    {{cat}}
+                </ons-list-item>
+            </ons-list>
+
+            <br>
+
+            <!--<ons-list class="bottom-menu-list">
+                <ons-list-item class="bottom-menu-item" ng-click="menu.setMainPage('settings.html', {closeMenu: true})">
+                    Settings
+                    <div class="notification menu-notification">3</div>
+                </ons-list-item>
+
+                <ons-list-item class="bottom-menu-item" ng-click="menu.setMainPage('settings.html', {closeMenu: true})">
+                    Help
+                </ons-list-item>
+
+                <ons-list-item class="bottom-menu-item" ng-click="menu.setMainPage('settings.html', {closeMenu: true})">
+                    Send feedback
+                </ons-list-item>
+            </ons-list>-->
+          
+
+        </ons-page>
+    </ons-template>
+
+    <ons-template id="search.html">
+
+        <ons-page id='search-menu-page'>
+            <ons-toolbar>
+                <div class="left">
+                    <ons-toolbar-button ng-click="menu.setMenuPage('menu.html')">
+                        <ons-icon icon="fa-arrow-left"
+                                  size="30px"
+                                  fixed-width="false">
+                        </ons-icon>
+                    </ons-toolbar-button>
+                </div>
+            </ons-toolbar>
+                
+                <input type="search" value="" ng-model="feed_search" placeholder="Search" class="search-input" style="margin-top:5px;" autofocus>
+                <ons-list>
+                    <ons-list-item class="search-list-item" ng-repeat="feedResource in feedResources | filter:feed_search  track by $index" ng-click="loadRSSFrom(feedResource.rss_url, $index); menu.close();">
+
+                        <span class="favicon" ng-show="feedResource.website.length>3">
+                            <img style="margin-right:5px; border-radius:2px;" ng-src="{{faviconAPI + feedResource.website}}" />
+                        </span>
+
+                        {{feedResource.name}}
+                    </ons-list-item>
+                </ons-list>
+            <br />
+            <ons-list>
+                <ons-list-item ng-click="updateDataFromCloud()">
+                    Update
+                </ons-list-item>
+                <ons-list-item ng-click="removeLocalCache()">
+                    Remove Local Cache
+                </ons-list-item>
+            </ons-list>
+            
+
+        </ons-page>
+    </ons-template>
+
+    <ons-template id="all-feed.html">
+        <ons-navigator var="myNavigator">
+            <ons-page id="all-feed-page">
+                <!--<ons-pull-hook ng-action="load($done)" var="loader">
+                <span ng-switch="loader.getCurrentState()">
+                    <span ng-switch-when="initial"><ons-icon size="35px" icon="ion-arrow-down-a"></ons-icon> Pull down to refresh</span>
+                    <span ng-switch-when="preaction"><ons-icon size="35px" icon="ion-arrow-up-a"></ons-icon> Release to refresh</span>
+                    <span ng-switch-when="action"><ons-icon size="35px" spin="true" icon="ion-load-d"></ons-icon> Loading data...</span>
+                </span>
+            </ons-pull-hook>-->
+
+                <ons-toolbar>
+                    <div class="left">
+                        <ons-toolbar-button ng-click="menu.toggle()">
+                            <ons-icon icon="fa-bars" size="30px" fixed-width="false" ></ons-icon>
+                        </ons-toolbar-button>
+                        <ons-toolbar-button ng-click="menu.setMenuPage('search.html') ; menu.toggle()">
+                            <ons-icon icon="fa-search" size="30px" fixed-width="false"></ons-icon>
+                        </ons-toolbar-button>
+                        
+                    </div>
+                    <div class="center smallLabel" ng-click="menu.setMenuPage('search.html') ; menu.toggle()">{{feedsProviderTitle}}</div>
+                    <div class="right">
+                        <ons-toolbar-button ng-click="toggleFavorite();">
+                            <ons-icon  ng-show="isCurrentFavorite==false" icon="fa-heart-o" size="20px" fixed-width="false"></ons-icon>
+                            <ons-icon ng-show="isCurrentFavorite==true" icon="fa-heart" size="20px" fixed-width="false"></ons-icon>
+                        </ons-toolbar-button>
+                    </div>
+                    <!--<div class="right">
+                        <ons-toolbar-button id="menu-pop-all-feed" ng-click="show('#menu-pop-all-feed')" >
+                            <ons-icon icon="fa-ellipsis-h" size="30px" fixed-width="false" ></ons-icon>
+                        </ons-toolbar-button>
+                    </div>-->
+
+                    <!--<div class="right">
+                        <ons-toolbar-button ng-click="reset()">Reset</ons-toolbar-button>
+                    </div>-->
+                </ons-toolbar>
+
+                <!--<ons-list>
+                <ons-list-item ng-show="items.length === 0">
+                    <div class="info center">
+                        Pull down to fetch items
+                    </div>
+                </ons-list-item>
+
+                <ons-list-item modifier="chevron" class="item" ng-repeat="item in items">
+                    <ons-row>
+                        <ons-col width="80px">
+                            <img ng-src="http://lorempixel.com/60/60/?{{item.rand}}" class="item-thum"></img>
+                        </ons-col>
+                        <ons-col>
+                            <header>
+                                <span class="item-title">{{item.title}}</span>
+                                <span class="item-label">{{item.tags}}</span>
+                            </header>
+                            <div ng-show="item.TextDesc==''">
+                                <p><span style='opacity: 0.7;'><ons-icon icon='fa-spinner' spin='true'></ons-icon> Loading bacon...</p></span>
+                            </div>
+                            <p class="item-desc">{{ item.TextDesc }}</p>
+                        </ons-col>
+                    </ons-row>
+                </ons-list-item>
+            </ons-list>-->
+
+
+
+                <ons-carousel auto-scroll-ratio="0.1" auto-refresh fullscreen swipeable overscrollable auto-scroll var="carouselElm">
+                    <ons-carousel-item class="carousel-item" ng-repeat="carouselItem in carouselItems track by $index">
+
+                        
+                        <div ng-show="loadSuccess == true" class="layout">
+
+                            <div style="width:100%; height:100%" >
+
+                                <div class="{{carouselItem.layout}}"   modifier="tappable" ng-repeat="idx in carouselItem.feeds" ng-click="readFeed(idx)"  ng-if="feeds[idx].img_url != 'no-image'">
+
+                                    <div class="feed-img-container">
+                                        <div class="feed-img" back-img="{{feeds[idx].img_url}}"></div>
+                                    </div>
+
+                                    <div class="feed-textDesc-container">
+                                        <div class="feed-title th-newton-title">
+                                            {{feeds[idx].title}}
+                                        </div>
+                                        <div class="feed-textDesc th-newton-desc">
+                                            {{feeds[idx].textDesc}}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="{{carouselItem.layout}}" modifier="tappable" ng-repeat="idx in carouselItem.feeds" ng-click="readFeed(idx)" ng-if="feeds[idx].img_url == 'no-image' ">
+
+                                    <div class="feed-textDesc-container-no-image">
+                                        <div class="feed-title th-newton-title">
+                                            {{feeds[idx].title}}
+                                        </div>
+                                        <div class="feed-textDesc th-newton-desc">
+                                            {{feeds[idx].textDesc}}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <ons-row ng-show="loadSuccess == false" style="margin-top: 100px; text-align: center;">
+                            <ons-col>
+                                <ons-button modifier="light">
+                                    Load again
+                                </ons-button>
+                                <p style="color: #999; font-size: 13px;"> May be there was a network error<br></p>
+                            </ons-col>
+                        </ons-row>
+                       
+
+                        <!--<osn-list>
+                        <ons-list-item class="feed-no-data" ng-show="carouselItem.feeds.length === 0">
+                            No Data
+                        </ons-list-item>
+
+                        <ons-list-item class="list-item-container" ng-repeat="feed in carouselItem.feeds">
+                            <ons-row>
+                                <ons-col width="95px">
+                                    <img src="images/location1.png" class="thumbnail feed-img">
+                                </ons-col>
+                                <ons-col>
+                                    <div class="name">
+                                        {{feed.title}}
+                                    </div>
+                                    <div class="location">
+                                        <i class="fa fa-map-marker"></i> tags: {{feed.tags}}
+                                    </div>
+                                    <div class="desc">
+                                       {{feed.textDesc}}
+                                    </div>
+                                </ons-col>
+                                <ons-col width="40px"></ons-col>
+                            </ons-row>
+                        </ons-list-item>
+
+                    </osn-list>-->
+                        <!--<ons-list>
+                        <ons-list-item ng-show="carouselItem.feeds.length === 0">
+                            <div class="info center">
+                                No data
+                            </div>
+                        </ons-list-item>
+                        <ons-list-item modifier="chevron" class="feed-100-50" ng-repeat="feed in carouselItem.feeds">
+                            <div class="feed-img-container">
+                                <img class="feed-img" ng-src="{{feed.img_urls}}">
+                            </div>
+                            <div class="feed-textDesc-container">
+                                <span class="feed-title">{{feed.title}}</span>
+                                <span class="item-tags">{{feed.tags}}</span>
+                                <p class="feed-textDesc">{{feed.textDesc}}</p>
+                            </div>
+
+
+                            <ons-row>
+                                <ons-col width="50%">
+                                    <div class="feed-img-cntainer">
+                                        <img class="feed-img" ng-src="{{feed.img_urls}}">
+                                    </div>
+                                </ons-col>
+                                <ons-col>
+                                    <div class="feed-textDesc-container">
+                                        <header>
+                                            <span class="feed-title">{{feed.title}}</span>
+                                            <span class="item-tags">{{feed.tags}}</span>
+                                        </header>
+
+                                        <div ng-show="feed.TextDesc==''">
+                                            <p><span style='opacity: 0.7;'><ons-icon icon='fa-spinner' spin='true'></ons-icon> Loading...</span></p>
+                                        </div>
+                                        <p class="item-desc htmlDesc" ng-bind-html="feed.htmlDesc"></p>
+                                        <p class="feed-textDesc" >{{feed.textDesc}}</p>
+
+                                    </div>
+
+                                </ons-col>
+                            </ons-row>
+                        </ons-list-item>
+                    </ons-list>-->
+                    </ons-carousel-item>
+                </ons-carousel>
+            </ons-page>
+        </ons-navigator>
+    </ons-template>
+
+    <ons-template id="read-feed.html">
+
+        <ons-page id="read-feed-page">
+           
+            <ons-toolbar>
+                <div class="left">
+                    <ons-toolbar-button ng-click="popReadCarouselPage()">
+                        <ons-icon icon="fa-arrow-left"
+                                  size="30px"
+                                  fixed-width="false">
+                        </ons-icon>
+                    </ons-toolbar-button>
+                </div>
+                <div class="center smallLabel">{{feedsProviderTitle}}</div>
+                <!--<div class="right">
+                    <ons-toolbar-button >
+                        <ons-icon icon="fa-ellipsis-h"  size="30px"  fixed-width="false"></ons-icon>
+                   </ons-toolbar-button>
+                </div>-->
+            </ons-toolbar>
+
+     
+            <ons-carousel auto-scroll-ratio="0.1" auto-refresh fullscreen swipeable overscrollable auto-scroll initial-index="{{carouselShowReadIndex}}" var="carouselReadElm">
+                <ons-carousel-item class="carousel-read-item" ng-repeat="idx in carouselReadItems">
+                      <div class="feed-htmlDesc" ng-bind-html="feeds[idx].htmlDesc"></div>
+                      
+                        <a href="{{feeds[idx].link}}">
+                            <ons-row style="margin-top: 100px; text-align: center;">
+                                    <ons-col>
+                                        <ons-button  modifier="light">
+                                            Go to source
+                                        </ons-button>
+                                    </ons-col>
+                            </ons-row>
+                        </a>
+
+                </ons-carousel-item>
+            </ons-carousel>
+        </ons-page>
+
+    </ons-template>
+
+    <ons-template id="settings.html">
+        <ons-page id="settings-page">
+            <ons-toolbar>
+                <div class="left">
+                    <ons-toolbar-button ng-click="menu.toggle()">
+                        <ons-icon icon="ion-navicon" size="28px" fixed-width="false"></ons-icon>
+                    </ons-toolbar-button>
+                </div>
+            </ons-toolbar>
+                
+
+            <ons-row style="margin-top: 100px; text-align: center;">
+                <ons-col>
+                    <ons-button modifier="light" >
+                        Settings
+                    </ons-button>
+                    <p style="color: #999; font-size: 13px;"> Want to setup something<br> Next Time</p>
+                </ons-col>
+            </ons-row>
+         
+        </ons-page>
+    </ons-template>
+
+    <ons-template id="welcome.html">
+        <ons-page id="welcome-page">
+            <ons-toolbar>
+                <div class="left">
+                    <ons-toolbar-button ng-click="menu.toggle()">
+                        <ons-icon icon="fa-bars" size="30px" fixed-width="false"></ons-icon>
+                    </ons-toolbar-button>
+                </div>
+                <!--<div class="center">Welcome</div>-->
+            </ons-toolbar>
+     
+            <ons-row style="margin-top: 100px; text-align: center;">
+                <ons-col>
+                    <ons-button id="console" modifier="light" ng-click="loadRSSFrom(defaultURL)">
+                        Loading..
+                    </ons-button>
+
+               </ons-col>
+            </ons-row>
+
+            <ons-row style="margin-top:10%">
+                        <ons-icon style="margin:auto;" icon="fa-spinner"  size="40px"  spin="true" fixed-width="false">
+            </ons-row>
+
+
+        </ons-page>
+    </ons-template>
+
+    <ons-template id="popover.html">
+        <ons-popover style="height: 200px; width: 200px"
+                     animation="fade">
+            <ons-page>
+                Popover content.
+            </ons-page>
+        </ons-popover>
+    </ons-template>
+
+</body>
+</html>
